@@ -1,5 +1,6 @@
 import "dotenv/config";
 import os from "node:os";
+import path from "node:path";
 import cors from "cors";
 import express from "express";
 import helmet from "helmet";
@@ -131,6 +132,21 @@ export function createApp() {
   app.use("/api/tasks", tasksRouter);
   app.use("/api/settings", settingsRouter);
   app.use("/api/astrology", astrologyRouter);
+
+  // Serve frontend static files in production
+  if (process.env.NODE_ENV === "production") {
+    const clientDist = path.resolve(__dirname, "../../client/dist");
+    app.use(express.static(clientDist));
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api")) {
+        next();
+        return;
+      }
+      res.sendFile(path.join(clientDist, "index.html"), (err) => {
+        if (err) next(err);
+      });
+    });
+  }
 
   app.use((_req, res) => {
     const response: ApiResponse<null> = {
