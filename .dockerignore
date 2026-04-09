@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs (rebuilt in Docker)
+**/dist
+**/.turbo
+**/.next
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Environment secrets
+.env
+.env.local
+.env.*.local
+
+# Docker files (not needed in build context)
+Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Tests
+**/*.test.js
+**/*.test.ts
+**/tests/
+
+# Scripts (not a workspace member, contains only utility files)
+scripts/
+
+# Temp
+tmp/
+temp/
