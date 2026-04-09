@@ -10,8 +10,10 @@ function trimTrailingSlash(value: string): string {
 
 function resolveApiBaseUrl(): string {
   const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+
   if (!import.meta.env.DEV || typeof window === "undefined") {
-    return configuredBaseUrl || "http://localhost:3000/api";
+    // 生产环境：同源部署，使用相对路径
+    return configuredBaseUrl || "/api";
   }
 
   const inferredBaseUrl = `${window.location.protocol}//${window.location.hostname}:3000/api`;
