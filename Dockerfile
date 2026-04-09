@@ -32,7 +32,7 @@ RUN pnpm --filter @ai-novel/client build
 #    which only exist after prisma generate runs.
 COPY server/package.json ./server/
 COPY server/src/prisma ./server/prisma
-RUN cd /app/server && npx prisma generate --schema src/prisma/schema.prisma
+RUN cd /app/server && npx prisma generate --schema prisma/schema.prisma
 
 # 8. Copy server source and build TypeScript
 COPY server ./server
@@ -61,7 +61,7 @@ COPY --from=base /app/server/package.json ./server/
 COPY --from=base /app/server/prisma ./server/prisma
 
 # Re-generate Prisma in runtime (ensures @prisma/client binary is correct)
-RUN cd /app/server && npx prisma generate --schema src/prisma/schema.prisma
+RUN cd /app/server && npx prisma generate --schema prisma/schema.prisma
 
 # Copy workspace root files
 COPY --from=base /app/package.json ./package.json
