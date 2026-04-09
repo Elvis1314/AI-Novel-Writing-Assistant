@@ -76,7 +76,8 @@ RUN pnpm install --frozen-lockfile --prod
 RUN mkdir -p /app/data /app/logs && chown -R appuser:appgroup /app
 
 # Startup script
-RUN printf '#!/bin/sh\nset -e\necho "[1/3] Generate Prisma..."\ncd /app/server && npx prisma generate --schema src/prisma/schema.prisma\nnpx prisma db push --schema src/prisma/schema.prisma --skip-generate || true\necho "[2/3] Done. Starting server..."\ncd /app\nexec pnpm --filter @ai-novel/server start\n' > /app/start.sh && chmod +x /app/start.sh
+# Note: Prisma already generated in runtime stage (line 53), no need to regenerate
+RUN printf '#!/bin/sh\nset -e\necho "[1/2] Ensuring database exists..."\ncd /app/server\n# Only run db push if database doesn't exist (for first-time setup)\nif [ ! -f "/app/data/dev.db" ]; then\n    npx prisma db push --skip-generate || true\nfi\necho "[2/2] Starting server..."\ncd /app/server\nexec node dist/app.js\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER appuser
 ENV NODE_ENV=production
