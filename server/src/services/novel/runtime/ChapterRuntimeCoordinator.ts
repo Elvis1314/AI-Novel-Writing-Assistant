@@ -180,8 +180,8 @@ export class ChapterRuntimeCoordinator {
           phase: "finalizing",
           message: "正文已生成，正在整理章节文本并保存草稿。",
         });
-        const normalized = await writerResult.onDone(fullContent);
-        const generatedContent = normalized?.finalContent ?? fullContent;
+        const doneResult = await writerResult.onDone(fullContent);
+        const generatedContent = (doneResult && typeof doneResult === "object" && "finalContent" in doneResult) ? doneResult.finalContent : fullContent;
         this.emitRunStatus(helpers, {
           type: "run_status",
           runId: runStatusId,

@@ -34,7 +34,7 @@ interface VectorSearchFilter {
   ownerIds?: string[];
 }
 
-function buildHeaders(): HeadersInit {
+function buildHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
     ...(ragConfig.qdrantApiKey ? { "api-key": ragConfig.qdrantApiKey } : {}),

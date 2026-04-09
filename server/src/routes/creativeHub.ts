@@ -263,7 +263,7 @@ router.post("/threads/:threadId/runs/stream", validate({
     const threadState = await creativeHubService.getThreadState(threadId);
     const parentCheckpointId = body.checkpointId ?? threadState.currentCheckpointId ?? null;
     const resourceBindings = toBindings(body.resourceBindings);
-    const seedMessages = await buildSeedMessages(threadId, parentCheckpointId, body.messages);
+    const seedMessages = await buildSeedMessages(threadId, parentCheckpointId, body.messages as CreativeHubMessage[]);
 
     try {
       await creativeHubLangGraph.runThread({

@@ -95,16 +95,16 @@ export async function streamToSSE(
       writeSSEFrame(res, { type: "chunk", content: text });
     }
 
-    const donePayload = (await onDone?.(fullContent, {
+    const doneResult = await onDone?.(fullContent, {
       writeFrame: (payload) => writeSSEFrame(res, payload),
-    })) ?? undefined;
-    if (donePayload?.frames?.length) {
-      for (const frame of donePayload.frames) {
+    });
+    if (doneResult && typeof doneResult === "object" && "frames" in doneResult && doneResult.frames?.length) {
+      for (const frame of doneResult.frames) {
         writeSSEFrame(res, frame);
       }
     }
-    if (donePayload?.fullContent) {
-      fullContent = donePayload.fullContent;
+    if (doneResult && typeof doneResult === "object" && "fullContent" in doneResult && doneResult.fullContent) {
+      fullContent = doneResult.fullContent;
     }
     writeSSEFrame(res, { type: "done", fullContent });
   } catch (error) {
