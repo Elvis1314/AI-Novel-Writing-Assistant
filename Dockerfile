@@ -31,7 +31,7 @@ RUN pnpm --filter @ai-novel/client build
 #    The server TypeScript imports @prisma/client types (Prisma, World, etc.)
 #    which only exist after prisma generate runs.
 COPY server/package.json ./server/
-COPY server/prisma ./server/prisma
+COPY server/src/prisma ./server/prisma
 RUN cd /app/server && npx prisma generate --schema src/prisma/schema.prisma
 
 # 8. Copy server source and build TypeScript
