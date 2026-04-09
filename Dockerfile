@@ -32,7 +32,7 @@ RUN pnpm --filter @ai-novel/client build
 #    which only exist after prisma generate runs.
 COPY server/package.json ./server/
 COPY server/src/prisma ./server/prisma
-RUN cd /app/server && npx prisma generate --schema prisma/schema.prisma
+RUN cd /app/server && pnpm exec prisma generate --schema prisma/schema.prisma
 
 # 8. Copy server source and build TypeScript
 # Note: Use --noEmitOnError false to emit JS even with type errors,
@@ -45,41 +45,42 @@ RUN cd /app/server && pnpm exec tsc -p tsconfig.json --noEmitOnError false || tr
 # Runtime stage (production image)
 # =============================================
 FROM node:20-bookworm-slim AS runtime
+
+# Install OpenSSL (required by Prisma for libssl detection)
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
 RUN corepack enable && corepack prepare pnpm@9.7.0 --activate
 
-# Create non-root user for security
 RUN groupadd -g 1001 appgroup && useradd -u 1001 -g appgroup -m appuser
 WORKDIR /app
 
-# Copy node_modules (production deps only)
-COPY --from=base /app/node_modules ./node_modules
+# Step 1: Copy ALL package files and workspace config FIRST
+COPY --from=base /app/package.json ./package.json
+COPY --from=base /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=base /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --from=base /app/client/package.json ./client/
+COPY --from=base /app/server/package.json ./server/
+COPY --from=base /app/shared/package.json ./shared/
 
-# Copy built artifacts
+# Step 2: Copy Prisma schema
+COPY --from=base /app/server/prisma ./server/prisma
+
+# Step 3: Install production dependencies
+RUN pnpm install --frozen-lockfile --prod
+
+# Step 4: Generate Prisma client
+RUN cd /app/server && pnpm exec prisma generate --schema prisma/schema.prisma
+
+# Step 5: Copy built artifacts
 COPY --from=base /app/client/dist ./client/dist
 COPY --from=base /app/server/dist ./server/dist
 COPY --from=base /app/shared/dist ./shared/dist
 
-# Copy server runtime files
-COPY --from=base /app/server/package.json ./server/
-COPY --from=base /app/server/prisma ./server/prisma
-
-# Re-generate Prisma in runtime (ensures @prisma/client binary is correct)
-RUN cd /app/server && npx prisma generate --schema prisma/schema.prisma
-
-# Copy workspace root files
-COPY --from=base /app/package.json ./package.json
-COPY --from=base /app/pnpm-lock.yaml ./
-COPY --from=base /app/pnpm-workspace.yaml ./
-
-# Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
-
-# Create data directories
+# Step 6: Create data directories
 RUN mkdir -p /app/data /app/logs && chown -R appuser:appgroup /app
 
-# Startup script
-# Note: Prisma already generated in runtime stage (line 53), no need to regenerate
-RUN printf '#!/bin/sh\nset -e\necho "[1/2] Ensuring database exists..."\ncd /app/server\n# Only run db push if database doesn't exist (for first-time setup)\nif [ ! -f "/app/data/dev.db" ]; then\n    npx prisma db push --skip-generate || true\nfi\necho "[2/2] Starting server..."\ncd /app/server\nexec node dist/app.js\n' > /app/start.sh && chmod +x /app/start.sh
+# Step 7: Create startup script
+RUN printf '#!/bin/sh\nset -e\necho "[1/2] Ensuring database schema..."\ncd /app/server\nif [ ! -f "/app/data/dev.db" ]; then\n    pnpm exec prisma db push --skip-generate || true\nfi\necho "[2/2] Starting server..."\nexec node dist/app.js\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER appuser
 ENV NODE_ENV=production
