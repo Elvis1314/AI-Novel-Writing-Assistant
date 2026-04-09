@@ -92,7 +92,11 @@ export function createApp() {
       credentials: true,
     }),
   );
-  app.use(helmet());
+  app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
+  }));
   app.use(morgan((tokens, req, res) => {
     const method = tokens.method(req, res) ?? "-";
     const url = tokens.url(req, res) ?? "-";
