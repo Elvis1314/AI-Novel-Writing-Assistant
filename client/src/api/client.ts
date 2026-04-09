@@ -19,6 +19,15 @@ export const apiClient = axios.create({
   timeout: API_TIMEOUT_MS,
 });
 
+// Attach auth token to every request
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("auth_token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiResponse<unknown>>) => {
@@ -31,6 +40,14 @@ apiClient.interceptors.response.use(
       message = "网络连接失败，请检查网络后重试。";
     } else if (status >= 500) {
       message = backendError ?? "服务器错误，请稍后重试。";
+    } else if (status === 401) {
+      // Clear stale token and redirect to login
+      localStorage.removeItem("auth_token");
+      // Avoid infinite redirect loops
+      if (!window.location.pathname.includes("/login")) {
+        window.location.href = "/login";
+      }
+      return Promise.reject(normalizedError);
     }
 
     if (!status || !silentErrorStatuses.includes(status)) {

@@ -1,6 +1,8 @@
 import type { RouteObject } from "react-router-dom";
 import { Navigate, useRoutes } from "react-router-dom";
+import RequireAuth from "@/components/RequireAuth";
 import AppLayout from "@/components/layout/AppLayout";
+import LoginPage from "@/pages/LoginPage";
 import BookAnalysisPage from "@/pages/bookAnalysis/BookAnalysisPage";
 import CreativeHubPage from "@/pages/creativeHub/CreativeHubPage";
 import ChatPage from "@/pages/chat/ChatPage";
@@ -24,10 +26,14 @@ import { featureFlags } from "@/config/featureFlags";
 import NovelCreate from "@/pages/novels/NovelCreate";
 
 const routes: RouteObject[] = [
+  { path: "/login", element: <LoginPage /> },
   {
-    path: "/",
-    element: <AppLayout />,
+    element: <RequireAuth />,
     children: [
+      {
+        path: "/",
+        element: <AppLayout />,
+        children: [
       { index: true, element: <Home /> },
       { path: "novels", element: <NovelList /> },
       { path: "novels/create", element: <NovelCreate /> },
@@ -57,6 +63,8 @@ const routes: RouteObject[] = [
       { path: "writing-formula", element: <Navigate to="/style-engine" replace /> },
       { path: "base-characters", element: <CharacterLibrary /> },
       { path: "*", element: <Navigate to="/" replace /> },
+    ],
+      },
     ],
   },
 ];
