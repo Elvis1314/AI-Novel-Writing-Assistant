@@ -272,8 +272,8 @@ export class ChapterRuntimeCoordinator {
     for await (const chunk of writerResult.stream) {
       fullContent += toText(chunk.content);
     }
-    const normalized = await writerResult.onDone(fullContent);
-    return normalized?.finalContent ?? fullContent;
+    const doneResult = await writerResult.onDone(fullContent);
+    return (doneResult && typeof doneResult === "object" && "finalContent" in doneResult) ? doneResult.finalContent : fullContent;
   }
 
   private async finalizeChapterContent(input: {
