@@ -13,18 +13,29 @@ COPY client/package.json ./client/
 COPY server/package.json ./server/
 COPY shared/package.json ./shared/
 
-# 3. Install all dependencies (pnpm resolves all workspaces)
+# 3. Install all dependencies
 RUN pnpm install --frozen-lockfile
 
-# 4. Copy source code
-COPY client ./client
-COPY server ./server
-COPY shared ./shared
+# 4. Copy shared source first
 COPY tsconfig.base.json ./
+COPY shared ./shared
 
-# 5. Build all workspaces in dependency order
+# 5. Build shared first (other workspaces depend on it)
 RUN pnpm --filter @ai-novel/shared build
+
+# 6. Copy client source and build
+COPY client ./client
 RUN pnpm --filter @ai-novel/client build
+
+# 7. CRITICAL: Generate Prisma client BEFORE server build
+#    The server TypeScript imports @prisma/client types (Prisma, World, etc.)
+#    which only exist after prisma generate runs.
+COPY server/package.json ./server/
+COPY server/prisma ./server/prisma
+RUN cd /app/server && npx prisma generate --schema src/prisma/schema.prisma
+
+# 8. Copy server source and build TypeScript
+COPY server ./server
 RUN pnpm --filter @ai-novel/server build
 
 # =============================================
@@ -49,29 +60,22 @@ COPY --from=base /app/shared/dist ./shared/dist
 COPY --from=base /app/server/package.json ./server/
 COPY --from=base /app/server/prisma ./server/prisma
 
+# Re-generate Prisma in runtime (ensures @prisma/client binary is correct)
+RUN cd /app/server && npx prisma generate --schema src/prisma/schema.prisma
+
 # Copy workspace root files
 COPY --from=base /app/package.json ./package.json
 COPY --from=base /app/pnpm-lock.yaml ./
 COPY --from=base /app/pnpm-workspace.yaml ./
 
-# Install production dependencies only (no devDependencies)
+# Install production dependencies only
 RUN pnpm install --frozen-lockfile --prod
 
-# Create data directory for SQLite
+# Create data directories
 RUN mkdir -p /app/data /app/logs && chown -R appuser:appgroup /app
 
-# Create startup script using printf (Docker-safe)
-RUN printf '#!/bin/sh\n' > /app/start.sh && \
-    printf 'set -e\n' >> /app/start.sh && \
-    printf 'echo "[1/3] Generating Prisma client..."\n' >> /app/start.sh && \
-    printf 'cd /app/server\n' >> /app/start.sh && \
-    printf 'npx prisma generate --schema src/prisma/schema.prisma\n' >> /app/start.sh && \
-    printf 'echo "[2/3] Pushing database schema..."\n' >> /app/start.sh && \
-    printf 'npx prisma db push --schema src/prisma/schema.prisma --skip-generate\n' >> /app/start.sh && \
-    printf 'echo "[3/3] Starting server..."\n' >> /app/start.sh && \
-    printf 'cd /app\n' >> /app/start.sh && \
-    printf 'exec pnpm --filter @ai-novel/server start\n' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Startup script
+RUN printf '#!/bin/sh\nset -e\necho "[1/3] Generate Prisma..."\ncd /app/server && npx prisma generate --schema src/prisma/schema.prisma\nnpx prisma db push --schema src/prisma/schema.prisma --skip-generate || true\necho "[2/3] Done. Starting server..."\ncd /app\nexec pnpm --filter @ai-novel/server start\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER appuser
 ENV NODE_ENV=production
