@@ -80,7 +80,7 @@ COPY --from=base /app/shared/dist ./shared/dist
 RUN mkdir -p /app/data /app/logs && chown -R appuser:appgroup /app
 
 # Step 7: Create startup script
-RUN printf '#!/bin/sh\nset -e\necho "[1/2] Ensuring database schema..."\ncd /app/server\nif [ ! -f "/app/data/dev.db" ]; then\n    pnpm exec prisma db push --skip-generate || true\nfi\necho "[2/2] Starting server..."\nexec node dist/app.js\n' > /app/start.sh && chmod +x /app/start.sh
+RUN printf '#!/bin/sh\nset -e\necho "[1/2] Ensuring database schema..."\ncd /app/server\nif [ ! -f "/app/data/dev.db" ]; then\n    pnpm exec prisma db push --schema prisma/schema.prisma || true\nfi\necho "[2/2] Starting server..."\nexec node dist/app.js\n' > /app/start.sh && chmod +x /app/start.sh
 
 USER appuser
 ENV NODE_ENV=production
