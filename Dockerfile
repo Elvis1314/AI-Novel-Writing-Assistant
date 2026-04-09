@@ -65,8 +65,8 @@ COPY --from=base /app/shared/package.json ./shared/
 # Step 2: Copy Prisma schema
 COPY --from=base /app/server/prisma ./server/prisma
 
-# Step 3: Install production dependencies
-RUN pnpm install --frozen-lockfile --prod
+# Step 3: Install all dependencies (including prisma CLI for db push at startup)
+RUN pnpm install --frozen-lockfile
 
 # Step 4: Generate Prisma client
 RUN cd /app/server && pnpm exec prisma generate --schema prisma/schema.prisma
