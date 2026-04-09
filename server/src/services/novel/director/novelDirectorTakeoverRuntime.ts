@@ -69,7 +69,7 @@ export async function loadDirectorTakeoverState(input: {
   if (!novelRow) {
     throw new Error("小说不存在。");
   }
-  const novel = normalizeNovelOutput(novelRow) as DirectorTakeoverNovelContext & {
+  const novel = normalizeNovelOutput(novelRow) as unknown as DirectorTakeoverNovelContext & {
     bookContract?: Awaited<ReturnType<BookContractService["getByNovelId"]>>;
   };
   return {

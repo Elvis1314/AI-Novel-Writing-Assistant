@@ -30,7 +30,7 @@ const resourceBindingsSchema = z.object({
   knowledgeDocumentIds: z.array(z.string().trim().min(1)).optional(),
 });
 
-const creativeHubMessageSchema: z.ZodType<CreativeHubMessage> = z.object({
+const creativeHubMessageSchema = z.object({
   id: z.string().trim().optional(),
   type: z.enum(["system", "human", "ai", "tool"]),
   content: z.union([z.string(), z.array(z.record(z.string(), z.unknown()))]),

@@ -95,9 +95,9 @@ export async function streamToSSE(
       writeSSEFrame(res, { type: "chunk", content: text });
     }
 
-    const donePayload = await onDone?.(fullContent, {
+    const donePayload = (await onDone?.(fullContent, {
       writeFrame: (payload) => writeSSEFrame(res, payload),
-    });
+    })) ?? undefined;
     if (donePayload?.frames?.length) {
       for (const frame of donePayload.frames) {
         writeSSEFrame(res, frame);

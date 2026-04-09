@@ -9,7 +9,7 @@ interface CharacterCastMemberLike {
   name: string;
   role: string;
   gender?: CharacterGender | null;
-  castRole: string;
+  castRole?: string;
   storyFunction: string;
   shortDescription?: string | null;
   relationToProtagonist?: string | null;

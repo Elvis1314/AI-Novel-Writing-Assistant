@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { ApiResponse } from "@ai-novel/shared/types/api";
+import type { SupplementalCharacterCandidate } from "@ai-novel/shared/types/novelCharacter";
 import { z } from "zod";
 import { llmProviderSchema } from "../llm/providerSchema";
 import { validate } from "../middleware/validate";
@@ -121,7 +122,7 @@ export function registerNovelCharacterPreparationRoutes(
     async (req, res, next) => {
       try {
         const { id } = req.params as z.infer<typeof idParamsSchema>;
-        const data = await novelService.applySupplementalCharacter(id, req.body as z.infer<typeof supplementalCharacterCandidateSchema>);
+        const data = await novelService.applySupplementalCharacter(id, req.body as SupplementalCharacterCandidate);
         res.status(200).json({
           success: true,
           data,
