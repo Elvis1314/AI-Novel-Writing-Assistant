@@ -47,7 +47,9 @@ apiClient.interceptors.response.use(
       if (!window.location.pathname.includes("/login")) {
         window.location.href = "/login";
       }
-      return Promise.reject(normalizedError);
+      const authError = new Error("未登录或登录已过期") as ApiHttpError;
+      authError.status = 401;
+      return Promise.reject(authError);
     }
 
     if (!status || !silentErrorStatuses.includes(status)) {
