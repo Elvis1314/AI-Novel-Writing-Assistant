@@ -15,6 +15,7 @@ import {
   BOOK_FRAMING_COMMERCIAL_TAG_MAX_LENGTH,
   BOOK_FRAMING_MAX_COMMERCIAL_TAGS,
 } from "@ai-novel/shared/types/novelFraming";
+import { authMiddleware } from "../middleware/auth";
 import { validate } from "../middleware/validate";
 import { llmProviderSchema } from "../llm/providerSchema";
 import { NovelDirectorService } from "../services/novel/director/NovelDirectorService";
@@ -22,6 +23,8 @@ import { directorCandidateSchema } from "../services/novel/director/novelDirecto
 
 const router = Router();
 const novelDirectorService = new NovelDirectorService();
+
+router.use(authMiddleware);
 
 const correctionPresetValues = DIRECTOR_CORRECTION_PRESETS.map((item) => item.value) as [string, ...string[]];
 const takeoverStartPhaseValues = [...DIRECTOR_TAKEOVER_START_PHASES] as [string, ...string[]];

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SSEFrame } from "@ai-novel/shared/types/api";
+import type { ApiResponse, SSEFrame } from "@ai-novel/shared/types/api";
 import type { ChapterRuntimePackage } from "@ai-novel/shared/types/chapterRuntime";
 import { API_BASE_URL } from "@/lib/constants";
 
@@ -105,18 +105,83 @@ export function useSSE(options?: UseSSEOptions) {
       controllerRef.current = controller;
 
       try {
-        const response = await fetch(url.startsWith("http") ? url : `${API_BASE_URL}${url}`, {
+        const token = localStorage.getItem("auth_token");
+        const isRelativeUrl = !url.startsWith("http");
+        const requestUrl = isRelativeUrl ? `${API_BASE_URL}${url}` : url;
+
+        const response = await fetch(requestUrl, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
             ...(options?.headers ?? {}),
           },
           body: JSON.stringify(body ?? {}),
           signal: controller.signal,
         });
 
+        // 401: 清 token + 跳转登录页（行为与 axios interceptor 保持一致）
+        if (response.status === 401) {
+          localStorage.removeItem("auth_token");
+          if (!window.location.pathname.includes("/login")) {
+            window.location.href = "/login";
+          }
+          const contentType = response.headers.get("content-type") ?? "";
+          if (contentType.includes("application/json")) {
+            try {
+              const json = (await response.json()) as ApiResponse<unknown>;
+              setError(json.error ?? "未登录或登录已过期，请重新登录。");
+            } catch {
+              setError("未登录或登录已过期，请重新登录。");
+            }
+          } else {
+            setError("未登录或登录已过期，请重新登录。");
+          }
+          setIsStreaming(false);
+          return;
+        }
+
         if (!response.ok || !response.body) {
-          throw new Error(`请求失败，状态码 ${response.status}`);
+          // 尝试从 SSE error 帧中提取错误信息，否则使用 HTTP 状态文本
+          let errorMessage = `请求失败，状态码 ${response.status}`;
+          const contentType = response.headers.get("content-type") ?? "";
+          if (contentType.includes("text/event-stream")) {
+            // 读取一小段 SSE 内容，看看是否有 error 帧
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder("utf-8");
+            let leftover = "";
+            try {
+              while (true) {
+                const { value, done } = await reader.read();
+                if (done) break;
+                leftover += decoder.decode(value, { stream: false });
+                const lines = leftover.split("\n");
+                for (const line of lines) {
+                  const trimmed = line.trim();
+                  if (trimmed.startsWith("data:")) {
+                    const raw = trimmed.slice(5).trim();
+                    if (raw) {
+                      try {
+                        const frame = JSON.parse(raw) as SSEFrame;
+                        if (frame.type === "error") {
+                          errorMessage = frame.error;
+                          break;
+                        }
+                      } catch {
+                        // ignore parse errors
+                      }
+                    }
+                  }
+                }
+                if (errorMessage !== `请求失败，状态码 ${response.status}`) break;
+              }
+            } finally {
+              reader.cancel();
+            }
+          }
+          setError(errorMessage);
+          setIsStreaming(false);
+          return;
         }
 
         const reader = response.body.getReader();

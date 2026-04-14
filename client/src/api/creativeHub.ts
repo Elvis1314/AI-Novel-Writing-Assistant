@@ -100,14 +100,34 @@ export async function* streamCreativeHubRun(
     ...(payload.temperature !== undefined ? { temperature: payload.temperature } : {}),
     ...(payload.maxTokens !== undefined ? { maxTokens: payload.maxTokens } : {}),
   };
+  const token = localStorage.getItem("auth_token");
   const response = await fetch(`${API_BASE_URL}/creative-hub/threads/${resolvedThreadId}/runs/stream`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: JSON.stringify(requestBody),
     signal: abortSignal,
   });
+
+  // 401: 清 token + 跳转登录页（行为与 axios interceptor 保持一致）
+  if (response.status === 401) {
+    localStorage.removeItem("auth_token");
+    if (!window.location.pathname.includes("/login")) {
+      window.location.href = "/login";
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      try {
+        const json = (await response.json()) as { error?: string };
+        throw new Error(json.error ?? "未登录或登录已过期，请重新登录。");
+      } catch {
+        throw new Error("未登录或登录已过期，请重新登录。");
+      }
+    }
+    throw new Error("未登录或登录已过期，请重新登录。");
+  }
 
   if (!response.ok || !response.body) {
     throw new Error(`创作中枢请求失败，状态码 ${response.status}`);
